@@ -1,0 +1,498 @@
+---
+title: "Penalized Regression"
+subtitle: "Understanding LASSO and Ridge Regression"
+author: ""
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+    chalkboard: true
+    preview-links: auto
+    transition: slide
+    navigation-mode: vertical
+    fig-width: 8
+    fig-height: 6
+filters:
+  - webr
+webr:
+  packages: ['ggplot2', 'glmnet']
+---
+
+## Welcome
+
+This presentation covers:
+
+- Quick review of Ordinary Least Squares (OLS)
+- Introduction to penalized regression methods
+- Ridge Regression (L2 penalty)
+- LASSO Regression (L1 penalty)
+- Practical examples with interactive R code
+
+## What You'll Learn
+
+By the end of this session:
+
+- Understand limitations of OLS regression
+- Learn how regularization helps with overfitting
+- Distinguish between Ridge and LASSO approaches
+- Apply these methods to real data
+
+---
+
+# Part 1: OLS Review
+
+## Ordinary Least Squares (OLS) Basics
+
+**The Classic Linear Model:**
+
+$$y = X\beta + \epsilon$$
+
+- Goal: Minimize the sum of squared residuals
+- $$\hat{\beta} = \arg\min_{\beta} \sum_{i=1}^{n}(y_i - x_i^T\beta)^2$$
+- Closed form solution: $\hat{\beta} = (X^TX)^{-1}X^Ty$
+
+## OLS: Simple Example
+
+Let's see OLS in action:
+
+```{webr-r}
+# Generate simple data
+set.seed(123)
+n <- 50
+x <- rnorm(n)
+y <- 2 + 3*x + rnorm(n, sd=0.5)
+
+# Fit OLS model
+model <- lm(y ~ x)
+summary(model)$coefficients
+```
+
+## OLS: Visualization
+
+```{webr-r}
+# Plot the data and fitted line
+plot(x, y, pch=19, col='steelblue',
+     main='OLS Regression', xlab='X', ylab='Y')
+abline(model, col='red', lwd=2)
+legend('topleft', 'Fitted line', col='red', lwd=2)
+```
+
+## OLS Assumptions
+
+Key assumptions for OLS:
+
+- **Linearity**: Relationship between X and Y is linear
+- **Independence**: Observations are independent
+- **Homoscedasticity**: Constant variance of errors
+- **Normality**: Errors are normally distributed
+
+## Problems with OLS
+
+OLS can struggle when:
+
+- **High dimensionality**: More predictors than observations (p > n)
+- **Multicollinearity**: Predictors are highly correlated
+- **Overfitting**: Model fits noise in training data
+- **Interpretation**: Too many variables make models hard to understand
+
+---
+
+# Part 2: Why Penalized Regression?
+
+## The Overfitting Problem
+
+As model complexity increases:
+
+- **Training error** decreases
+- **Test error** may increase (overfitting)
+- Model captures noise rather than signal
+
+**Solution**: Add a penalty to control model complexity
+
+## Bias-Variance Tradeoff
+
+The fundamental tradeoff:
+
+- **Low Complexity**: High bias, low variance (underfitting)
+- **High Complexity**: Low bias, high variance (overfitting)
+- **Optimal**: Balance between the two
+
+Penalized regression helps find this balance
+
+## General Penalized Regression Form
+
+$$\hat{\beta} = \arg\min_{\beta} \left\{ \sum_{i=1}^{n}(y_i - x_i^T\beta)^2 + \lambda \cdot \text{Penalty}(\beta) \right\}$$
+
+- First term: Measures fit to data (like OLS)
+- Second term: Penalizes model complexity
+- $\lambda \geq 0$: Tuning parameter controlling penalty strength
+
+---
+
+# Part 3: Ridge Regression
+
+## Ridge Regression (L2 Penalty)
+
+**Definition:**
+
+$$\hat{\beta}^{\text{Ridge}} = \arg\min_{\beta} \left\{ \sum_{i=1}^{n}(y_i - x_i^T\beta)^2 + \lambda \sum_{j=1}^{p}\beta_j^2 \right\}$$
+
+- Adds squared magnitude of coefficients as penalty
+- Also called "L2 regularization"
+- Has closed form: $\hat{\beta}^{\text{Ridge}} = (X^TX + \lambda I)^{-1}X^Ty$
+
+## Ridge: Key Properties
+
+**Characteristics:**
+
+- **Shrinks** coefficients toward zero (but not exactly to zero)
+- **Handles multicollinearity** effectively
+- **Works when p > n** (more predictors than observations)
+- All predictors remain in the model
+
+**When to use**: Many correlated predictors, want to keep all variables
+
+## Ridge: Effect of Lambda
+
+```{webr-r}
+# Generate data with correlated predictors
+set.seed(42)
+n <- 100
+p <- 5
+X <- matrix(rnorm(n*p), n, p)
+# Make some predictors correlated
+X[,2] <- X[,1] + rnorm(n, sd=0.1)
+beta_true <- c(3, 1.5, 0, 0, 2)
+y <- X %*% beta_true + rnorm(n)
+
+# Show correlation
+cor(X)[1:2, 1:2]
+```
+
+## Ridge: Fitting the Model
+
+```{webr-r}
+library(glmnet)
+
+# Fit ridge regression (alpha=0 for ridge)
+ridge_model <- glmnet(X, y, alpha=0)
+
+# Plot coefficient paths
+plot(ridge_model, xvar="lambda", label=TRUE,
+     main="Ridge Coefficient Paths")
+```
+
+## Ridge: Choosing Lambda
+
+**Cross-Validation** is the standard approach:
+
+```{webr-r}
+# Cross-validation to find optimal lambda
+cv_ridge <- cv.glmnet(X, y, alpha=0, nfolds=5)
+plot(cv_ridge)
+```
+
+## Ridge: Best Model
+
+```{webr-r}
+# Best lambda and coefficients
+best_lambda <- cv_ridge$lambda.min
+cat("Optimal lambda:", round(best_lambda, 4), "\n")
+
+# Coefficients at optimal lambda
+coef(cv_ridge, s="lambda.min")
+```
+
+---
+
+# Part 4: LASSO Regression
+
+## LASSO Regression (L1 Penalty)
+
+**Definition:**
+
+$$\hat{\beta}^{\text{LASSO}} = \arg\min_{\beta} \left\{ \sum_{i=1}^{n}(y_i - x_i^T\beta)^2 + \lambda \sum_{j=1}^{p}|\beta_j| \right\}$$
+
+- "Least Absolute Shrinkage and Selection Operator"
+- Uses absolute value of coefficients as penalty
+- Also called "L1 regularization"
+
+## LASSO: Key Properties
+
+**Characteristics:**
+
+- **Shrinks** some coefficients **exactly to zero**
+- **Performs variable selection** automatically
+- **Creates sparse models** (fewer non-zero coefficients)
+- No closed form solution (requires optimization)
+
+**When to use**: Many predictors, want automatic feature selection
+
+## LASSO: The Magic of L1
+
+Why does L1 penalty produce zeros?
+
+- **Geometric intuition**: L1 constraint region has corners
+- Optimization often hits corners where some $\beta_j = 0$
+- Ridge's L2 constraint is a circle (no corners)
+
+This is why LASSO does variable selection!
+
+## LASSO: Fitting the Model
+
+```{webr-r}
+# Fit LASSO regression (alpha=1 for LASSO)
+lasso_model <- glmnet(X, y, alpha=1)
+
+# Plot coefficient paths
+plot(lasso_model, xvar="lambda", label=TRUE,
+     main="LASSO Coefficient Paths")
+```
+
+## LASSO: Variable Selection
+
+```{webr-r}
+# Cross-validation for LASSO
+cv_lasso <- cv.glmnet(X, y, alpha=1, nfolds=5)
+plot(cv_lasso)
+```
+
+## LASSO: Selected Variables
+
+```{webr-r}
+# Best lambda
+best_lambda_lasso <- cv_lasso$lambda.min
+cat("Optimal lambda:", round(best_lambda_lasso, 4), "\n\n")
+
+# Coefficients - note some are exactly zero!
+coef(cv_lasso, s="lambda.min")
+```
+
+---
+
+# Part 5: Comparison
+
+## Ridge vs LASSO: Side by Side
+
+| Aspect | Ridge (L2) | LASSO (L1) |
+|--------|-----------|------------|
+| Penalty | $\sum \beta_j^2$ | $\sum \|\beta_j\|$ |
+| Coefficients | Shrinks toward 0 | Can be exactly 0 |
+| Variable Selection | No | Yes |
+| Multicollinearity | Handles well | Picks one arbitrarily |
+| Use Case | Keep all predictors | Feature selection |
+
+## When to Use Which?
+
+**Use Ridge when:**
+
+- All predictors might be relevant
+- Predictors are highly correlated
+- Want to shrink coefficients but keep all
+
+**Use LASSO when:**
+
+- Many predictors are likely irrelevant
+- Want a simpler, interpretable model
+- Need automatic feature selection
+
+## Elastic Net: Best of Both
+
+Combines Ridge and LASSO:
+
+$$\text{Penalty} = \lambda \left[ \alpha \sum_{j=1}^{p}|\beta_j| + (1-\alpha) \sum_{j=1}^{p}\beta_j^2 \right]$$
+
+- $\alpha = 0$: Pure Ridge
+- $\alpha = 1$: Pure LASSO
+- $0 < \alpha < 1$: Elastic Net
+
+**Benefit**: Variable selection + handles correlated predictors
+
+## Elastic Net Example
+
+```{webr-r}
+# Fit elastic net (alpha=0.5)
+elastic_model <- glmnet(X, y, alpha=0.5)
+plot(elastic_model, xvar="lambda", label=TRUE,
+     main="Elastic Net Coefficient Paths")
+```
+
+```{webr-r}
+# Cross-validation
+cv_elastic <- cv.glmnet(X, y, alpha=0.5, nfolds=5)
+coef(cv_elastic, s="lambda.min")
+```
+
+---
+
+# Part 6: Practical Considerations
+
+## Standardization is Critical
+
+**Always standardize predictors** before applying penalized regression:
+
+- Different scales $\rightarrow$ different penalties
+- `glmnet` standardizes by default
+- Coefficients returned on original scale
+
+```{webr-r}
+# Manual standardization example
+X_scaled <- scale(X)
+head(X_scaled[, 1:3], 3)
+```
+
+## Choosing the Tuning Parameter
+
+**Cross-Validation** is the gold standard:
+
+- Split data into K folds (typically 5 or 10)
+- For each $\lambda$, train on K-1 folds, validate on 1
+- Choose $\lambda$ with lowest CV error
+
+**Two common choices:**
+
+- `lambda.min`: Minimum CV error
+- `lambda.1se`: Largest $\lambda$ within 1 SE of minimum (more regularization)
+
+## Interpreting Results
+
+After fitting penalized regression:
+
+- **Non-zero coefficients**: Important predictors
+- **Zero coefficients** (LASSO): Excluded from model
+- **Magnitude**: Strength of relationship (on standardized scale)
+- **Sign**: Direction of relationship
+
+## Common Pitfalls
+
+**Watch out for:**
+
+- **Not standardizing**: Unfair penalties on different scales
+- **Data leakage**: Standardizing before splitting train/test
+- **Ignoring λ.1se**: Sometimes simpler model is better
+- **Not validating**: Always test on held-out data
+
+---
+
+# Part 7: Hands-On Exercise
+
+## Your Turn: Complete Example
+
+Let's build a model from scratch:
+
+```{webr-r}
+# Generate data
+set.seed(100)
+n <- 200
+p <- 20
+X <- matrix(rnorm(n*p), n, p)
+
+# Only 5 predictors truly matter
+true_coef <- c(3, -2, 1.5, -1, 2, rep(0, 15))
+y <- X %*% true_coef + rnorm(n, sd=2)
+
+cat("Data generated: n =", n, ", p =", p, "\n")
+cat("True non-zero coefficients:", sum(true_coef != 0), "\n")
+```
+
+## Exercise: Fit LASSO
+
+```{webr-r}
+# Fit LASSO with cross-validation
+cv_model <- cv.glmnet(X, y, alpha=1, nfolds=10)
+
+# Plot results
+plot(cv_model)
+```
+
+## Exercise: Check Results
+
+```{webr-r}
+# How many variables selected?
+coefs <- coef(cv_model, s="lambda.min")[-1]  # exclude intercept
+n_selected <- sum(coefs != 0)
+
+cat("Variables selected:", n_selected, "\n")
+cat("True positives:", sum(coefs[1:5] != 0), "\n")
+cat("False positives:", sum(coefs[6:20] != 0), "\n")
+```
+
+## Exercise: Compare Models
+
+```{webr-r}
+# Compare Ridge vs LASSO
+cv_ridge_ex <- cv.glmnet(X, y, alpha=0, nfolds=10)
+cv_lasso_ex <- cv.glmnet(X, y, alpha=1, nfolds=10)
+
+cat("Ridge CV error:", round(min(cv_ridge_ex$cvm), 3), "\n")
+cat("LASSO CV error:", round(min(cv_lasso_ex$cvm), 3), "\n")
+```
+
+---
+
+# Summary
+
+## Key Takeaways
+
+**OLS Limitations:**
+
+- Struggles with high dimensions and multicollinearity
+- Prone to overfitting with many predictors
+
+**Ridge Regression:**
+
+- Shrinks coefficients with L2 penalty
+- Keeps all predictors in model
+- Great for correlated predictors
+
+## Key Takeaways (continued)
+
+**LASSO Regression:**
+
+- Shrinks with L1 penalty, produces exact zeros
+- Automatic variable selection
+- Creates sparse, interpretable models
+
+**Practical:**
+
+- Always standardize predictors
+- Use cross-validation to choose λ
+- Consider Elastic Net for best of both worlds
+
+## Further Topics to Explore
+
+Beyond this introduction:
+
+- **Grouped penalties**: Group LASSO for factor variables
+- **Adaptive LASSO**: Data-adaptive penalties
+- **Non-linear extensions**: Generalized additive models with penalties
+- **Other penalty types**: SCAD, MCP, etc.
+- **Bayesian interpretation**: Ridge as Gaussian prior, LASSO as Laplace prior
+
+## Resources
+
+**R Packages:**
+
+- `glmnet`: Fast implementation of elastic net
+- `caret`: ML framework with penalized regression
+- `tidymodels`: Modern framework for modeling
+
+**Books:**
+
+- "Statistical Learning with Sparsity" (Hastie, Tibshirani, Wainwright)
+- "An Introduction to Statistical Learning" (James et al.)
+- "Elements of Statistical Learning" (Hastie, Tibshirani, Friedman)
+
+## Questions?
+
+Thank you for your attention!
+
+**Feel free to:**
+
+- Experiment with the interactive code
+- Try different values of α and λ
+- Apply these methods to your own data
+
+**Contact information**
+
+- [Add your contact details here]

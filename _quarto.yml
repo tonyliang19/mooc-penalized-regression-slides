@@ -1,0 +1,30 @@
+project:
+  type: website
+
+website:
+  title: "Penalized Regression: LASSO and Ridge"
+  navbar:
+    title: "Penalized Regression"
+    left:
+      - href: index.qmd
+        text: Home
+
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+    show-slide-number: all
+    chalkboard: true
+    preview-links: auto
+    logo: ""
+    footer: "Penalized Regression | LASSO and Ridge"
+    transition: slide
+    background-transition: fade
+    smaller: false
+    scrollable: false
+    center: true
+    navigation-mode: vertical
+    controls-layout: bottom-right
+    controls-tutorial: true
+    fig-width: 8
+    fig-height: 6
