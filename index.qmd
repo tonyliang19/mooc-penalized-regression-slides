@@ -1,21 +1,26 @@
 ---
 title: "Penalized Regression"
 subtitle: "Understanding LASSO and Ridge Regression"
-author: ""
+author: "Tony Liang"
+engine: "knitr"
 format:
-  revealjs:
-    theme: [default, custom.scss]
-    slide-number: true
-    chalkboard: true
-    preview-links: auto
-    transition: slide
-    navigation-mode: vertical
-    fig-width: 8
-    fig-height: 6
+    revealjs:
+        theme: [default, custom.scss]
+        slide-number: true
+        scrollable: true
+        chalkboard: true
+        preview-links: auto
+        transition: slide
+        #navigation-mode: vertical
+        fig-width: 8
+        fig-height: 6
 filters:
-  - webr
+    - webr
 webr:
-  packages: ['ggplot2', 'glmnet']
+    packages:
+        - dplyr
+        - ggplot2
+        - glmnet
 ---
 
 ## Welcome
