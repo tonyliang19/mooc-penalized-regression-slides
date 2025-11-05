@@ -2,18 +2,6 @@
 title: "Penalized Regression"
 subtitle: "Understanding LASSO and Ridge Regression"
 author: "Tony Liang"
-engine: "knitr"
-format:
-    revealjs:
-        theme: [default, custom.scss]
-        slide-number: true
-        scrollable: true
-        chalkboard: true
-        preview-links: auto
-        transition: slide
-        #navigation-mode: vertical
-        fig-width: 8
-        fig-height: 6
 filters:
     - webr
 webr:
@@ -21,6 +9,9 @@ webr:
         - dplyr
         - ggplot2
         - glmnet
+        - mvtnorm
+        - tidyr
+    show-starup-message: false
 ---
 
 ## Welcome
@@ -44,7 +35,7 @@ By the end of this session:
 
 ---
 
-# Part 1: OLS Review
+## Part 1: OLS Review {.center2}
 
 ## Ordinary Least Squares (OLS) Basics
 
@@ -100,9 +91,9 @@ OLS can struggle when:
 - **Overfitting**: Model fits noise in training data
 - **Interpretation**: Too many variables make models hard to understand
 
----
 
-# Part 2: Why Penalized Regression?
+
+## Part 2: Why Penalized Regression? {.center2}
 
 ## The Overfitting Problem
 
@@ -124,17 +115,131 @@ The fundamental tradeoff:
 
 Penalized regression helps find this balance
 
+
+```{r}
+#| echo: false
+#| fig-width: 8
+#| fig-height: 4
+
+# call library here
+library(ggplot2)
+
+# Parameters
+mu = 1; n = 5; sig = 1
+
+secondary = "#e98a15"
+primary = "#2c365e"
+tertiary = "#0a8754"
+fourth_color = "#a8201a"
+
+## for simplicity
+purple = primary
+blue = primary
+orange = secondary
+green = tertiary
+red = fourth_color
+
+cols = c(blue, red, green, orange)
+par(mfrow = c(2, 2), bty = "n", ann = FALSE, xaxt = "n", yaxt = "n", 
+    family = "serif", mar = c(0, 0, 0, 0), oma = c(0, 2, 2, 0))
+library(mvtnorm)
+mv <- matrix(c(0, 0, 0, 0, -.5, -.5, -.5, -.5), 4, byrow = TRUE)
+va <- matrix(c(.02, .02, .1, .1, .02, .02, .1, .1), 4, byrow = TRUE)
+
+for (i in 1:4) {
+  plot(0, 0, ylim = c(-2, 2), xlim = c(-2, 2), pch = 19, cex = 42, 
+       col = blue, ann = FALSE, pty = "s")
+  points(0, 0, pch = 19, cex = 30, col = "white")
+  points(0, 0, pch = 19, cex = 18, col = green)
+  points(0, 0, pch = 19, cex = 6, col = orange)
+  points(rmvnorm(20, mean = mv[i, ], sigma = diag(va[i, ])), cex = 1, pch = 19)
+  switch(i,
+    "1" = {
+      mtext("low variance", 3, cex = 2)
+      mtext("low bias", 2, cex = 2)
+    },
+    "2" = mtext("high variance", 3, cex = 2),
+    "3" = mtext("high bias", 2, cex = 2)
+  )
+}
+```
+
+
 ## General Penalized Regression Form
 
-$$\hat{\beta} = \arg\min_{\beta} \left\{ \sum_{i=1}^{n}(y_i - x_i^T\beta)^2 + \lambda \cdot \text{Penalty}(\beta) \right\}$$
+$$\hat{\beta} = \arg\min_{\beta} \left\{ \sum_{i=1}^{n}(y_i - x_i^T\beta)^2 + \lambda \, \lVert \beta \rVert_{x} \right\}$$
 
 - First term: Measures fit to data (like OLS)
-- Second term: Penalizes model complexity
+- Second term: Penalizes model complexity with different norms
+    - x is the different norm to use
 - $\lambda \geq 0$: Tuning parameter controlling penalty strength
 
----
+## Different norms
 
-# Part 3: Ridge Regression
+
+```{r}
+#| echo: false
+library(mvtnorm)
+library(dplyr)
+normBall <- function(q = 1, len = 1000) {
+  tg <- seq(0, 2 * pi, length = len)
+  out <- data.frame(x = cos(tg)) |>
+    mutate(b = (1 - abs(x)^q)^(1 / q), bm = -b) |>
+    tidyr::gather(key = "lab", value = "y", -x)
+  out$lab <- paste0('"||" * beta * "||"', "[", signif(q, 2), "]")
+  return(out)
+}
+
+ellipseData <- function(n = 100, xlim = c(-2, 3), ylim = c(-2, 3),
+                        mean = c(1, 1), Sigma = matrix(c(1, 0, 0, .5), 2)) {
+  df <- expand.grid(
+    x = seq(xlim[1], xlim[2], length.out = n),
+    y = seq(ylim[1], ylim[2], length.out = n)
+  )
+  df$z <- dmvnorm(df, mean, Sigma)
+  df
+}
+
+lballmax <- function(ed, q = 1, tol = 1e-6) {
+  ed <- filter(ed, x > 0, y > 0)
+  for (i in 1:20) {
+    ff <- abs((ed$x^q + ed$y^q)^(1 / q) - 1) < tol
+    if (sum(ff) > 0) break
+    tol <- 2 * tol
+  }
+  best <- ed[ff, ]
+  best[which.max(best$z), ]
+}
+
+nbs <- list()
+nbs[[1]] <- normBall(0, 1)
+qs <- c(.5, .75, 1, 1.5, 2)
+for (ii in 2:6) nbs[[ii]] <- normBall(qs[ii - 1])
+nbs <- bind_rows(nbs)
+nbs$lab <- factor(nbs$lab, levels = unique(nbs$lab))
+seg <- data.frame(
+  lab = levels(nbs$lab)[1],
+  x0 = c(-1, 0), x1 = c(1, 0), y0 = c(0, -1), y1 = c(0, 1)
+)
+levels(seg$lab) <- levels(nbs$lab)
+ggplot(nbs, aes(x, y)) +
+  geom_path(size = 1.2) +
+  facet_wrap(~lab, labeller = label_parsed) +
+  geom_segment(data = seg, aes(x = x0, xend = x1, y = y0, yend = y1), size = 1.2) +
+  theme_bw(base_family = "", base_size = 24) +
+  coord_equal() +
+  scale_x_continuous(breaks = c(-1, 0, 1)) +
+  scale_y_continuous(breaks = c(-1, 0, 1)) +
+  geom_vline(xintercept = 0, size = .5) +
+  geom_hline(yintercept = 0, size = .5) +
+  xlab(bquote(beta[1])) +
+  ylab(bquote(beta[2]))
+```
+
+
+
+
+## Part 3: Ridge Regression {.center2}
 
 ## Ridge Regression (L2 Penalty)
 
@@ -208,9 +313,9 @@ cat("Optimal lambda:", round(best_lambda, 4), "\n")
 coef(cv_ridge, s="lambda.min")
 ```
 
----
 
-# Part 4: LASSO Regression
+
+## Part 4: LASSO Regression {.center2}
 
 ## LASSO Regression (L1 Penalty)
 
@@ -240,6 +345,7 @@ Why does L1 penalty produce zeros?
 - **Geometric intuition**: L1 constraint region has corners
 - Optimization often hits corners where some $\beta_j = 0$
 - Ridge's L2 constraint is a circle (no corners)
+
 
 This is why LASSO does variable selection!
 
@@ -273,9 +379,8 @@ cat("Optimal lambda:", round(best_lambda_lasso, 4), "\n\n")
 coef(cv_lasso, s="lambda.min")
 ```
 
----
 
-# Part 5: Comparison
+## Part 5: Comparison {.center2}
 
 ## Ridge vs LASSO: Side by Side
 
@@ -301,36 +406,8 @@ coef(cv_lasso, s="lambda.min")
 - Want a simpler, interpretable model
 - Need automatic feature selection
 
-## Elastic Net: Best of Both
 
-Combines Ridge and LASSO:
-
-$$\text{Penalty} = \lambda \left[ \alpha \sum_{j=1}^{p}|\beta_j| + (1-\alpha) \sum_{j=1}^{p}\beta_j^2 \right]$$
-
-- $\alpha = 0$: Pure Ridge
-- $\alpha = 1$: Pure LASSO
-- $0 < \alpha < 1$: Elastic Net
-
-**Benefit**: Variable selection + handles correlated predictors
-
-## Elastic Net Example
-
-```{webr-r}
-# Fit elastic net (alpha=0.5)
-elastic_model <- glmnet(X, y, alpha=0.5)
-plot(elastic_model, xvar="lambda", label=TRUE,
-     main="Elastic Net Coefficient Paths")
-```
-
-```{webr-r}
-# Cross-validation
-cv_elastic <- cv.glmnet(X, y, alpha=0.5, nfolds=5)
-coef(cv_elastic, s="lambda.min")
-```
-
----
-
-# Part 6: Practical Considerations
+## Part 6: Practical Considerations
 
 ## Standardization is Critical
 
@@ -377,9 +454,8 @@ After fitting penalized regression:
 - **Ignoring λ.1se**: Sometimes simpler model is better
 - **Not validating**: Always test on held-out data
 
----
 
-# Part 7: Hands-On Exercise
+## Part 7: Hands-On Exercise {.center2}
 
 ## Your Turn: Complete Example
 
@@ -400,28 +476,6 @@ cat("Data generated: n =", n, ", p =", p, "\n")
 cat("True non-zero coefficients:", sum(true_coef != 0), "\n")
 ```
 
-## Exercise: Fit LASSO
-
-```{webr-r}
-# Fit LASSO with cross-validation
-cv_model <- cv.glmnet(X, y, alpha=1, nfolds=10)
-
-# Plot results
-plot(cv_model)
-```
-
-## Exercise: Check Results
-
-```{webr-r}
-# How many variables selected?
-coefs <- coef(cv_model, s="lambda.min")[-1]  # exclude intercept
-n_selected <- sum(coefs != 0)
-
-cat("Variables selected:", n_selected, "\n")
-cat("True positives:", sum(coefs[1:5] != 0), "\n")
-cat("False positives:", sum(coefs[6:20] != 0), "\n")
-```
-
 ## Exercise: Compare Models
 
 ```{webr-r}
@@ -433,9 +487,8 @@ cat("Ridge CV error:", round(min(cv_ridge_ex$cvm), 3), "\n")
 cat("LASSO CV error:", round(min(cv_lasso_ex$cvm), 3), "\n")
 ```
 
----
 
-# Summary
+## Summary
 
 ## Key Takeaways
 
@@ -464,15 +517,6 @@ cat("LASSO CV error:", round(min(cv_lasso_ex$cvm), 3), "\n")
 - Use cross-validation to choose λ
 - Consider Elastic Net for best of both worlds
 
-## Further Topics to Explore
-
-Beyond this introduction:
-
-- **Grouped penalties**: Group LASSO for factor variables
-- **Adaptive LASSO**: Data-adaptive penalties
-- **Non-linear extensions**: Generalized additive models with penalties
-- **Other penalty types**: SCAD, MCP, etc.
-- **Bayesian interpretation**: Ridge as Gaussian prior, LASSO as Laplace prior
 
 ## Resources
 
@@ -498,6 +542,3 @@ Thank you for your attention!
 - Try different values of α and λ
 - Apply these methods to your own data
 
-**Contact information**
-
-- [Add your contact details here]

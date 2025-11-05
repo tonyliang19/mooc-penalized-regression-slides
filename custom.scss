@@ -1,9 +1,83 @@
-/*-- scss:defaults --*/
 
-$body-bg: #f8f9fa;
-$body-color: #212529;
-$link-color: #0d6efd;
-$presentation-heading-color: #2c3e50;
+/*-- scss:defaults --*/
+/* @import 'https://fonts.googleapis.com/css?family=Cormorant+Garamond:400,b,i'*/
+
+// Primary/body text
+$mainFont: 'Jost', sans-serif;
+$mainFontSize: 32px;//24px; 30px; 36px;; 
+// Vertical spacing between blocks of text
+$blockMargin: 20px;
+
+// Main colors
+
+$primary: #2c365e;
+$secondary: #e98a15;
+$navbar-bg: $primary;
+$tertiary: #2a76dd;
+$quaternary: #ff170d;
+$fifth-color: #f9c80e;
+
+
+// Headings
+$headingMargin: 0 0 $blockMargin 0;
+$headingFont: 'Abhaya Libre', Impact, sans-serif;
+//$headingColor: #006791;
+$headingLineHeight: 1.2;
+$headingLetterSpacing: normal;
+$headingTextTransform: none;
+$headingTextShadow: none;
+$headingFontWeight: normal;
+$heading1TextShadow: $headingTextShadow;
+
+$heading1Size: 3.00em;
+$heading2Size: 2em; //2.11em;
+$heading3Size: 1.55em;
+$heading4Size: 1.00em;
+
+$codeFont: monospace;
+
+$body-bg: #fefefe; // This is pure white
+$presentation-heading-color: $primary;
+// Chance stuff original 36px
+$presentation-font-size-root: 32px; // Use 40px when width 1600 height 900
+
+$link-color: $primary;
+
+// Size for portrait images of collaborators (proof)
+$portrait-width: 150px;
+$portrait-height: 200px;
+
+// Size for round images of collaborators (bruce mcmanus biobank)
+$round-height: 126px;
+
+/*-- scss:rules --*/
+
+.primary {color: $primary;}
+.secondary {color: $secondary;}
+.tertiary {color: $tertiary;}
+.quaternary {color: $quaternary;}
+.fifth-color {color: $fifth-color;}
+
+.thanks {
+  font-size: 1.5em;
+  text-align: center !important; /* Center text horizontally */
+  display: flex !important; /* Enable flexbox layout */
+  justify-content: center !important; /* Center horizontally within its parent */
+  align-items: center !important; /* Center vertically within its parent */
+  height: 100vh !important;
+}
+
+.smaller {
+  font-size: 0.5em;
+}
+
+.center2 {
+  display: flex;
+  align-items: center;   /* Vertical center */
+  justify-content: flex-start;  /* Left align horizontally */
+  text-align: left; 
+}
+
 
 /*-- scss:rules --*/
 
