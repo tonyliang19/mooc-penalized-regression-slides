@@ -5,10 +5,11 @@ format:
       show-slide-number: all
       footer: "Penalized Regression | LASSO and Ridge"
       transition: slide
+      embed-resources: false
       background-transition: fade
       slide-number: true
       scrollable: true
-      chalkboard: true
+      chalkboard: false
       preview-links: auto
       fig-width: 8
       fig-height: 6
